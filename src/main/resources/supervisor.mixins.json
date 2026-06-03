@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "net.bittorn.supervisor.mixins",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "server": [
+    "ServerGamePacketListenerImplMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
