@@ -1,0 +1,13 @@
+{
+  "itemGroup.supervisor": "Example Mod Tab",
+  "block.supervisor.example_block": "Example Block",
+  "item.supervisor.example_item": "Example Item",
+
+  "supervisor.configuration.title": "Supervisor Configs",
+  "supervisor.configuration.section.supervisor.common.toml": "Supervisor Configs",
+  "supervisor.configuration.section.supervisor.common.toml.title": "Supervisor Configs",
+  "supervisor.configuration.items": "Item List",
+  "supervisor.configuration.logDirtBlock": "Log Dirt Block",
+  "supervisor.configuration.magicNumberIntroduction": "Magic Number Text",
+  "supervisor.configuration.magicNumber": "Magic Number"
+}
