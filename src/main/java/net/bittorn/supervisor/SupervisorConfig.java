@@ -7,6 +7,8 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 public class SupervisorConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
+    // region AutoMod defaults
+
     // Matches 'nigger'
     private static final String nSlurRule = "(n|\\|\\\\||ո|ռ|\uD83C\uDD5D|\uD835\uDD79)+\\s*(i|1|!|\\||l|ı|ɩ|ɪ|ӏ|Ꭵ|ꙇ|ꭵ|ǀ|Ι|І|Ӏ|׀|ו|ן|١|۱|ا|Ⲓ|ⵏ|ꓲ|\uD800\uDE8A|\uD800\uDF09|\uD800\uDF20|\uD81B\uDF28|ﺍ|ﺎ|￨|\uD83C\uDD58|\uD835\uDD74)+\\s*(g|9|ƍ|ɡ|ᶃ|\uD83C\uDD56|\uD835\uDD72){2,}\\s*(e|3|£|е|ҽ|ꬲ|\uD83C\uDD54|\uD835\uDD70)+\\s*(r|г|ᴦ|ⲅ|ꭇ|ꭈ|ꮁ|\uD83C\uDD61|\uD835\uDD7D)+";
 
@@ -28,8 +30,10 @@ public class SupervisorConfig {
     // Matches 'tranny'
     private static final String tSlurRule = "(t|7|\uD83C\uDD63|\uD835\uDDCD|\uD835\uDD7F)+\\s*(r|г|ᴦ|ⲅ|ꭇ|ꭈ|ꮁ|\uD83C\uDD61|\uD835\uDD7D)+\\s*(a|4|@|∆|/-\\\\|/_\\\\|Д|ɑ|а|\uD83C\uDD50|\uD835\uDDBA|\uD835\uDD6C)+\\s*(n|\\|\\\\||ո|ռ|\uD83C\uDD5D|\uD835\uDD79){2,}\\s*(y|¥|ɣ|ʏ|γ|у|ү|ყ|ᶌ|ỿ|ℽ|ꭚ|\uD806\uDCC4|\uD83C\uDD68|\uD835\uDD84)+";
 
-    private static final List<String> defaultMildRules = List.of(fSlurRule, chSlurRule, sSlurRule, cSlurRule);
-    private static final List<String> defaultSevereRules = List.of(nSlurRule, kSlurRule, tSlurRule);
+    // endregion
+
+    private static final List<String> defaultMildRules = List.of(chSlurRule, sSlurRule, cSlurRule);
+    private static final List<String> defaultSevereRules = List.of(nSlurRule, kSlurRule, tSlurRule, fSlurRule);
 
     public static final ModConfigSpec.BooleanValue DEBUG = BUILDER
             .comment(" Whether to enable debug mode")
