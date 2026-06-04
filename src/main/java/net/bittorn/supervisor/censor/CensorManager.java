@@ -1,9 +1,12 @@
 package net.bittorn.supervisor.censor;
 
+import net.bittorn.supervisor.Supervisor;
 import net.bittorn.supervisor.SupervisorConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class CensorManager {
     public static final CensorManager INSTANCE = new CensorManager();
@@ -28,31 +31,55 @@ public class CensorManager {
     %,d
     """;
 
-    public List<String> parseMessage(String message) {
-        List<String> matches = new ArrayList<>();
-        String maximumSeverity = "";
-        int matchCount = 0;
+
+
+    public ParsedMessage parseMessage(String message) {
+        ParsedMessage parsedMessage = new ParsedMessage();
 
         // Check mild rules
         for (String rule : SupervisorConfig.MILD_RULES.get()) {
-            if (rule.matches(message)) {
-                matches.add(rule);
-                maximumSeverity = "mild";
-                matchCount++;
+            try {
+                Pattern compiledPattern = Pattern.compile(rule, Pattern.CASE_INSENSITIVE);
+                Matcher matcher = compiledPattern.matcher(message);
+
+                StringBuilder sb = new StringBuilder();
+                while (matcher.find()) {
+                    String match = matcher.group(0);
+                    matcher.appendReplacement(sb, "§n" + Matcher.quoteReplacement(match) + "§r");
+                    parsedMessage.matches.add(match);
+                    parsedMessage.maximumSeverity = ParsedMessage.MatchSeverity.MILD;
+                }
+
+                matcher.appendTail(sb);
+                message = sb.toString();
+            } catch (Exception e) {
+                Supervisor.LOGGER.error("{}{}", "Error with pattern: " + rule + " - ", e.getMessage()); // a tad long
             }
         }
 
         // Check severe rules
         for (String rule : SupervisorConfig.SEVERE_RULES.get()) {
-            if (rule.matches(message)) {
-                matches.add(rule);
-                maximumSeverity = "severe";
-                matchCount++;
+            try {
+                Pattern compiledPattern = Pattern.compile(rule, Pattern.CASE_INSENSITIVE);
+                Matcher matcher = compiledPattern.matcher(message);
+
+                StringBuilder sb = new StringBuilder();
+                while (matcher.find()) {
+                    String match = matcher.group(0);
+                    matcher.appendReplacement(sb, "§n" + Matcher.quoteReplacement(match) + "§r");
+                    parsedMessage.matches.add(match);
+                    parsedMessage.maximumSeverity = ParsedMessage.MatchSeverity.SEVERE;
+                }
+
+                matcher.appendTail(sb);
+                message = sb.toString();
+            } catch (Exception e) {
+                Supervisor.LOGGER.error("{}{}", "Error with pattern: " + rule + " - ", e.getMessage()); // a tad long
             }
         }
 
-        List<String> toReturn = new ArrayList<>(List.of(Integer.toString(matchCount), maximumSeverity));
-        toReturn.addAll(matches);
-        return toReturn;
+        parsedMessage.message = message;
+
+        return parsedMessage;
     }
 }

@@ -1,6 +1,7 @@
 package net.bittorn.supervisor.webhook;
 
 import net.bittorn.supervisor.SupervisorConfig;
+import net.bittorn.supervisor.censor.ParsedMessage;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.net.URI;
@@ -12,7 +13,7 @@ import java.time.OffsetDateTime;
 import java.util.concurrent.CompletableFuture;
 
 public class DiscordWebhook {
-    public static void reportPlayerMessage(ServerPlayer player, String message, int matchCount, String maximumSeverity) {
+    public static void reportPlayerMessage(ServerPlayer player, ParsedMessage parsedMessage) {
         final String MESSAGE_FORMAT = """
                 {
                     "embeds": [
@@ -54,7 +55,7 @@ public class DiscordWebhook {
         String username = player.getName().getString();
         String UUID = player.getUUID().toString();
 
-        String content = String.format(MESSAGE_FORMAT, message.replace("§n", "__").replace("§r", "__"), matchCount, maximumSeverity, username, UUID, UUID, OffsetDateTime.now());
+        String content = String.format(MESSAGE_FORMAT, parsedMessage.message.replace("§n", "__").replace("§r", "__"), parsedMessage.matches.size(), parsedMessage.maximumSeverity, username, UUID, UUID, OffsetDateTime.now());
 
         sendWebhook(content);
     }

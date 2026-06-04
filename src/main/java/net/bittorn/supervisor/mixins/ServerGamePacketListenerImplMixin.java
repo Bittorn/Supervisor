@@ -3,6 +3,7 @@ package net.bittorn.supervisor.mixins;
 import net.bittorn.supervisor.Supervisor;
 import net.bittorn.supervisor.SupervisorConfig;
 import net.bittorn.supervisor.censor.CensorManager;
+import net.bittorn.supervisor.censor.ParsedMessage;
 import net.bittorn.supervisor.webhook.DiscordWebhook;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundChatPacket;
@@ -31,28 +32,20 @@ public abstract class ServerGamePacketListenerImplMixin {
         if (player.server.getProfilePermissions(player.getGameProfile()) >= SupervisorConfig.FILTER_BYPASS_PERMISSION_LEVEL.getAsInt()
             && SupervisorConfig.FILTER_BYPASS_PERMISSION_LEVEL.getAsInt() != 0) return;
 
-        List<String> parsedMessage = CensorManager.INSTANCE.parseMessage(packet.message());
-
-        int matchCount = Integer.getInteger(parsedMessage.getFirst());
-        String maximumSeverity = parsedMessage.get(1);
-
-        parsedMessage.remove(1);
-        parsedMessage.removeFirst();
-
-        String[] matches = parsedMessage.toArray(new String[0]);
+        ParsedMessage parsedMessage = CensorManager.INSTANCE.parseMessage(packet.message());
 
         // If no matches were found
-        if (matchCount == 0) return;
+        if (parsedMessage.matches.isEmpty()) return;
 
         // If message is flagged, then do not continue with vanilla behaviour
         ci.cancel();
 
-        DiscordWebhook.reportPlayerMessage(player, packet.message(), matchCount, maximumSeverity);
+        DiscordWebhook.reportPlayerMessage(player, parsedMessage);
 
-        Component messageToPlayer = Component.literal(String.format(CensorManager.CENSOR_FORMAT, packet.message(), matchCount, maximumSeverity));;
+        Component messageToPlayer = Component.literal(String.format(CensorManager.CENSOR_FORMAT, parsedMessage.message, parsedMessage.matches.size(), parsedMessage.maximumSeverity));;
 
         if (SupervisorConfig.SHOULD_BAN_ON_SEVERE.getAsBoolean()) {
-            messageToPlayer = Component.literal(String.format(CensorManager.BAN_MESSAGE_FORMAT, packet.message(), matchCount));
+            messageToPlayer = Component.literal(String.format(CensorManager.BAN_MESSAGE_FORMAT, parsedMessage.message, parsedMessage.matches.size()));
             UserBanList banList = player.server.getPlayerList().getBans();
             UserBanListEntry banListEntry = new UserBanListEntry(player.getGameProfile(), null, Supervisor.MODID, null, messageToPlayer.getString());
 
