@@ -79,7 +79,7 @@ public abstract class ServerGamePacketListenerImplMixin {
                 online.connection.disconnect(messageToPlayer);
             }
 
-        } else if (SupervisorConfig.SHOULD_KICK_ON_MILD.getAsBoolean() && parsedMessage.maximumSeverity == ParsedMessage.MatchSeverity.MILD) {
+        } else if (SupervisorConfig.SHOULD_KICK_ON_MILD.getAsBoolean() && (parsedMessage.maximumSeverity == ParsedMessage.MatchSeverity.MILD || parsedMessage.maximumSeverity == ParsedMessage.MatchSeverity.SEVERE)) {
             if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Kicking player for message: {}", parsedMessage.message);
 
             player.connection.disconnect(messageToPlayer);
