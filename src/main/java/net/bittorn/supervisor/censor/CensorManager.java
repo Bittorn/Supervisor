@@ -3,8 +3,6 @@ package net.bittorn.supervisor.censor;
 import net.bittorn.supervisor.Supervisor;
 import net.bittorn.supervisor.SupervisorConfig;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -13,20 +11,25 @@ public class CensorManager {
 
     public static final String CENSOR_FORMAT = """
     §l§c[MESSAGE FLAGGED BY AUTOMOD]§r
+    
     §bYour original message:§r
     %s
+    
     §bNumber of blocked words:§r
     %,d
+    
     §bMaximum severity:§r
     %s
     """;
 
     public static final String BAN_MESSAGE_FORMAT = """
     §l§c[BANNED BY AUTOMOD]§r
-    You have been banned by AutoMod for breaking server rules.
-    To appeal, open a ticket on the Discord.
+    
+    You have been banned by AutoMod for breaking server chat rules.
+    
     §bYour original message:§r
     %s
+    
     §bNumber of blocked words:§r
     %,d
     """;
@@ -74,7 +77,7 @@ public class CensorManager {
                 matcher.appendTail(sb);
                 message = sb.toString();
             } catch (Exception e) {
-                Supervisor.LOGGER.error("{}{}", "Error with pattern: " + rule + " - ", e.getMessage()); // a tad long
+                Supervisor.LOGGER.error("{}{}", "Error with rule: " + rule + " - ", e.getMessage()); // a tad long
             }
         }
 
