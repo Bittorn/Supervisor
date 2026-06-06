@@ -28,21 +28,37 @@ public class Supervisor {
         NeoForge.EVENT_BUS.register(this);
 
         // Register our mod's ModConfigSpec so that FML can create and load the config file for us
-        modContainer.registerConfig(ModConfig.Type.COMMON, SupervisorConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.COMMON, SupervisorConfig.SPEC, "supervisor.toml");
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        if (SupervisorConfig.WEBHOOK_URL.get().isBlank()) {
-            LOGGER.warn("Webhook URL is empty, will not send messages to Discord.");
-        }
-
-        if (SupervisorConfig.MILD_RULES.get().isEmpty() && SupervisorConfig.SEVERE_RULES.get().isEmpty()) {
-            LOGGER.warn("No chat rules found, chat moderation will not function.");
-        }
-
         if (SupervisorConfig.DEBUG.getAsBoolean()) {
             LOGGER.debug("Debug mode is enabled.");
         }
+
+        if (SupervisorConfig.ENABLE_WEBHOOK.getAsBoolean()) {
+            if (SupervisorConfig.WEBHOOK_URL.get().isBlank()) {
+                LOGGER.warn("Discord webhook is enabled, but the URL is empty!");
+                LOGGER.warn("Will not send messages to webhook");
+            } else {
+                LOGGER.info("Discord webhook is enabled");
+            }
+        } else {
+            LOGGER.info("Discord webhook is disabled");
+        }
+
+        if (SupervisorConfig.ENABLE_CENSOR.getAsBoolean()) {
+            if (SupervisorConfig.LOW_SEVERITY_RULES.get().isEmpty() && SupervisorConfig.MEDIUM_SEVERITY_RULES.get().isEmpty() && SupervisorConfig.HIGH_SEVERITY_RULES.get().isEmpty()) {
+                LOGGER.warn("Censor is enabled, but no rules are specified!");
+                LOGGER.warn("Will not moderate chat messages");
+            } else {
+                LOGGER.info("Censor is enabled");
+            }
+        } else {
+            LOGGER.info("Censor is disabled");
+        }
+
+        LOGGER.info("Supervisor loaded successfully");
     }
 }

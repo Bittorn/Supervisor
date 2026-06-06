@@ -33,7 +33,12 @@ public abstract class ServerGamePacketListenerImplMixin {
         // Allow mods and ops to bypass chat filter (unless disabled)
         if (player.server.getProfilePermissions(player.getGameProfile()) >= SupervisorConfig.FILTER_BYPASS_PERMISSION_LEVEL.getAsInt()
             && SupervisorConfig.FILTER_BYPASS_PERMISSION_LEVEL.getAsInt() != 0) {
-            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Player has bypass permission, returning.");
+            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Player has bypass permission, returning");
+            return;
+        }
+
+        if (!SupervisorConfig.ENABLE_CENSOR.getAsBoolean()) {
+            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Censor is disabled, returning");
             return;
         }
 
@@ -41,7 +46,7 @@ public abstract class ServerGamePacketListenerImplMixin {
 
         // If no matches were found
         if (parsedMessage.matches.isEmpty()) {
-            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("No matches were found.");
+            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("No matches were found");
             return;
         }
 
@@ -49,43 +54,63 @@ public abstract class ServerGamePacketListenerImplMixin {
 
         // Don't do anything if singleplayer or LAN host
         if (!server.isPublished()) {
-            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Game is singleplayer, not doing anything.");
+            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Game is singleplayer, return");
             return;
         }
 
         if (server.isSingleplayerOwner(player.getGameProfile())) {
-            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Player is owner, not doing anything.");
+            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Player is owner, returning");
             return;
         }
 
-        // If message is flagged, then do not continue with vanilla behaviour
-        ci.cancel();
-
-        DiscordWebhook.reportPlayerMessage(player, parsedMessage);
-
+        // TODO: replace with configurable message
         Component messageToPlayer = Component.literal(String.format(CensorManager.CENSOR_FORMAT, parsedMessage.message, parsedMessage.matches.size(), parsedMessage.maximumSeverity));
 
-        if (SupervisorConfig.SHOULD_BAN_ON_SEVERE.getAsBoolean() && parsedMessage.maximumSeverity == ParsedMessage.MatchSeverity.SEVERE) {
-            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Banning player for message: {}", parsedMessage.message);
-            messageToPlayer = Component.literal(String.format(CensorManager.BAN_MESSAGE_FORMAT, parsedMessage.message, parsedMessage.matches.size()));
+        // TODO: replace with lambda
+        switch (parsedMessage.maximumSeverity) {
+            case LOW -> processAction(SupervisorConfig.LOW_SEVERITY_ACTION.get(), player, messageToPlayer, parsedMessage, ci);
+            case MEDIUM -> processAction(SupervisorConfig.MEDIUM_SEVERITY_ACTION.get(), player, messageToPlayer, parsedMessage, ci);
+            case HIGH -> processAction(SupervisorConfig.HIGH_SEVERITY_ACTION.get(), player, messageToPlayer, parsedMessage, ci);
+        }
+    }
 
-            UserBanList banList = server.getPlayerList().getBans();
-            UserBanListEntry banListEntry = new UserBanListEntry(player.getGameProfile(), null, Supervisor.MODID, null, messageToPlayer.getString());
-            banList.add(banListEntry);
+    private void processAction(CensorManager.CensorAction censorAction, ServerPlayer player, Component messageToPlayer, ParsedMessage parsedMessage, CallbackInfo ci) {
+        MinecraftServer server = Objects.requireNonNull(player.getServer());
 
-            // Probably not needed, just ripped directly from vanilla code
-            ServerPlayer online = server.getPlayerList().getPlayer(player.getUUID());
-            if (online != null) {
-                online.connection.disconnect(messageToPlayer);
-            }
-
-        } else if (SupervisorConfig.SHOULD_KICK_ON_MILD.getAsBoolean() && (parsedMessage.maximumSeverity == ParsedMessage.MatchSeverity.MILD || parsedMessage.maximumSeverity == ParsedMessage.MatchSeverity.SEVERE)) {
-            if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Kicking player for message: {}", parsedMessage.message);
-
-            player.connection.disconnect(messageToPlayer);
+        if (censorAction != CensorManager.CensorAction.NONE) {
+            logMessage(player, parsedMessage);
         }
 
-        player.sendSystemMessage(messageToPlayer);
+        if (censorAction != CensorManager.CensorAction.NONE && censorAction != CensorManager.CensorAction.LOG) {
+            // If message is flagged, then do not continue with vanilla behaviour
+            ci.cancel();
+            player.sendSystemMessage(messageToPlayer);
+        }
+
+        switch (censorAction) {
+            case KICK -> kickPlayer(messageToPlayer, player);
+            case BAN -> banPlayer(messageToPlayer, server, player);
+        }
+    }
+
+    private void logMessage(ServerPlayer player, ParsedMessage parsedMessage) {
+        DiscordWebhook.reportPlayerMessage(player, parsedMessage);
+    }
+
+    private void kickPlayer(Component messageToPlayer, ServerPlayer player) {
+        player.connection.disconnect(messageToPlayer);
+    }
+
+    private void banPlayer(Component messageToPlayer, MinecraftServer server, ServerPlayer player) {
+        UserBanList banList = server.getPlayerList().getBans();
+        UserBanListEntry banListEntry = new UserBanListEntry(player.getGameProfile(), null, Supervisor.MODID, null, messageToPlayer.getString());
+        banList.add(banListEntry);
+
+        // Probably not needed, just ripped directly from vanilla code
+        ServerPlayer online = server.getPlayerList().getPlayer(player.getUUID());
+        if (online != null) {
+            online.connection.disconnect(messageToPlayer);
+        }
     }
 
 }

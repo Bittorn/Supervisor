@@ -7,11 +7,5 @@ public class ParsedMessage {
     public String message;
     public List<String> matches = new ArrayList<>();
 
-    public enum MatchSeverity {
-        NONE,
-        MILD,
-        SEVERE
-    }
-
-    public MatchSeverity maximumSeverity = ParsedMessage.MatchSeverity.NONE;
+    public CensorManager.Severity maximumSeverity = CensorManager.Severity.LOW;
 }
