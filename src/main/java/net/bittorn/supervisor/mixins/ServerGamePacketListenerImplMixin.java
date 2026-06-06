@@ -37,6 +37,7 @@ public abstract class ServerGamePacketListenerImplMixin {
             return;
         }
 
+        // Check if Censor is enabled
         if (!SupervisorConfig.ENABLE_CENSOR.getAsBoolean()) {
             if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Censor is disabled, returning");
             return;
@@ -50,28 +51,31 @@ public abstract class ServerGamePacketListenerImplMixin {
             return;
         }
 
-        MinecraftServer server = Objects.requireNonNull(player.getServer());
+        if (isSingleplayerOrHost(Objects.requireNonNull(player.getServer()))) return;
 
-        // Don't do anything if singleplayer or LAN host
+        // TODO replace with configurable message
+        Component messageToPlayer = Component.literal(String.format(CensorManager.CENSOR_FORMAT, parsedMessage.message, parsedMessage.maximumSeverity));
+
+        CensorManager.CensorAction censorAction = switch (parsedMessage.maximumSeverity) {
+            case LOW -> SupervisorConfig.LOW_SEVERITY_ACTION.get();
+            case MEDIUM -> SupervisorConfig.MEDIUM_SEVERITY_ACTION.get();
+            case HIGH -> SupervisorConfig.HIGH_SEVERITY_ACTION.get();
+        };
+
+        processAction(censorAction, player, messageToPlayer, parsedMessage, ci);
+    }
+
+    private boolean isSingleplayerOrHost(MinecraftServer server) {
         if (!server.isPublished()) {
             if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Game is singleplayer, return");
-            return;
+            return true;
         }
 
         if (server.isSingleplayerOwner(player.getGameProfile())) {
             if (SupervisorConfig.DEBUG.getAsBoolean()) Supervisor.LOGGER.debug("Player is owner, returning");
-            return;
+            return true;
         }
-
-        // TODO: replace with configurable message
-        Component messageToPlayer = Component.literal(String.format(CensorManager.CENSOR_FORMAT, parsedMessage.message, parsedMessage.matches.size(), parsedMessage.maximumSeverity));
-
-        // TODO: replace with lambda
-        switch (parsedMessage.maximumSeverity) {
-            case LOW -> processAction(SupervisorConfig.LOW_SEVERITY_ACTION.get(), player, messageToPlayer, parsedMessage, ci);
-            case MEDIUM -> processAction(SupervisorConfig.MEDIUM_SEVERITY_ACTION.get(), player, messageToPlayer, parsedMessage, ci);
-            case HIGH -> processAction(SupervisorConfig.HIGH_SEVERITY_ACTION.get(), player, messageToPlayer, parsedMessage, ci);
-        }
+        return false;
     }
 
     private void processAction(CensorManager.CensorAction censorAction, ServerPlayer player, Component messageToPlayer, ParsedMessage parsedMessage, CallbackInfo ci) {

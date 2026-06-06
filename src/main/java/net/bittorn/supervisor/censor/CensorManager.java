@@ -24,31 +24,14 @@ public class CensorManager {
     }
 
     public static final String CENSOR_FORMAT = """
-    §l§c[MESSAGE FLAGGED BY AUTOMOD]§r
+    §l§c[MESSAGE FLAGGED BY CENSOR]§r
     
     §bYour original message:§r
     %s
-    
-    §bNumber of blocked words:§r
-    %,d
     
     §bMaximum severity:§r
     %s
     """;
-
-    public static final String BAN_MESSAGE_FORMAT = """
-    §l§c[BANNED BY AUTOMOD]§r
-    
-    You have been banned by AutoMod for breaking server chat rules.
-    
-    §bYour original message:§r
-    %s
-    
-    §bNumber of blocked words:§r
-    %,d
-    """;
-
-
 
     public ParsedMessage parseMessage(String message) {
         ParsedMessage parsedMessage = new ParsedMessage();
