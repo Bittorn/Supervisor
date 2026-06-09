@@ -8,11 +8,13 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.bittorn.supervisor.ConfigCache;
 import net.bittorn.supervisor.Supervisor;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -28,6 +30,10 @@ import java.util.Date;
 
 public class SupervisorCommandHandler {
 
+    // Only suggest online players
+    private static final SuggestionProvider<CommandSourceStack> ONLINE_PLAYERS = (ctx, builder) ->
+            SharedSuggestionProvider.suggest(ctx.getSource().getServer().getPlayerNames(), builder);
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         LiteralArgumentBuilder<CommandSourceStack> supervisor = Commands.literal("supervisor").requires(commandSourceStack -> commandSourceStack.hasPermission(2));
 
@@ -36,14 +42,17 @@ public class SupervisorCommandHandler {
             sendSuccess(ctx, Component.literal("--- Supervisor %s ---".formatted(Supervisor.MODVERSION)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
 //            sendSuccess(ctx, Component.literal("--- Prefixed Commands ---").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
             // Meta
+            sendClickable(ctx, "/supervisor help",                          "Lists Supervisor commands",                        ChatFormatting.GREEN);
             sendClickable(ctx, "/supervisor reload",                        "Reloads Supervisor config",                        ChatFormatting.GREEN);
-            // Players
-//            sendClickable(ctx, "/supervisor warn <player> [reason]",        "Warns player with optional reason",                ChatFormatting.DARK_RED);
-            sendClickable(ctx, "/supervisor kick <player> [reason]",        "Kicks player with optional reason",                ChatFormatting.DARK_RED);
+
+            // Access
+//            TODO sendClickable(ctx, "/supervisor warn <player> [reason]",        "Warns player with optional reason",                ChatFormatting.DARK_RED);
+            sendClickable(ctx, "/supervisor kick <player> [reason]",        "Kicks player for optional reason",                ChatFormatting.DARK_RED);
             sendClickable(ctx, "/supervisor ban <player> <length> <reason>","Bans player for given length and reason",          ChatFormatting.DARK_RED);
             sendClickable(ctx, "/supervisor permaban <player> <reason>",    "Permanently bans player for given reason",         ChatFormatting.DARK_RED);
 
             sendSuccess(ctx, Component.literal(" "));
+
             // Gamemode
             sendClickable(ctx, "/gmc",                                      "Sets self to creative mode",                       ChatFormatting.GOLD);
             sendClickable(ctx, "/gms",                                      "Sets self to survival mode",                       ChatFormatting.GOLD);
@@ -62,23 +71,23 @@ public class SupervisorCommandHandler {
 
         // endregion
 
-        // region Player commands
+        // region Access commands
 
         supervisor.then(Commands.literal("kick")
-                .then(Commands.argument("player", EntityArgument.player()).executes(ctx ->
+                .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS).executes(ctx ->
                 kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), "")
         ).then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx ->
                 kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), StringArgumentType.getString(ctx, "reason"))
         ))));
 
         supervisor.then(Commands.literal("ban")
-                .then(Commands.argument("player", EntityArgument.player())
+                .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS)
                         .then(Commands.argument("length", IntegerArgumentType.integer(1))
                                 .then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx ->
                                     banPlayer(ctx, EntityArgument.getPlayer(ctx, "player").getGameProfile(), IntegerArgumentType.getInteger(ctx, "length"), StringArgumentType.getString(ctx, "reason")))))));
 
         supervisor.then(Commands.literal("permaban")
-                .then(Commands.argument("player", EntityArgument.player())
+                .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS)
                         .then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx ->
                             banPlayer(ctx, EntityArgument.getPlayer(ctx, "player").getGameProfile(), 0, StringArgumentType.getString(ctx, "reason"))))));
 
