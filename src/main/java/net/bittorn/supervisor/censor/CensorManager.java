@@ -1,7 +1,7 @@
 package net.bittorn.supervisor.censor;
 
+import net.bittorn.supervisor.ConfigCache;
 import net.bittorn.supervisor.Supervisor;
-import net.bittorn.supervisor.SupervisorConfig;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,17 +39,17 @@ public class CensorManager {
         String highlightedMessage = message;
 
         // Check low severity rules
-        for (String rule : SupervisorConfig.LOW_SEVERITY_RULES.get()) {
+        for (String rule : ConfigCache.lowSeverityRules) {
             highlightedMessage = matchRule(rule, parsedMessage, Severity.LOW);
         }
 
         // Check medium severity rules
-        for (String rule : SupervisorConfig.MEDIUM_SEVERITY_RULES.get()) {
+        for (String rule : ConfigCache.mediumSeverityRules) {
             highlightedMessage = matchRule(rule, parsedMessage, Severity.MEDIUM);
         }
 
         // Check high severity rules
-        for (String rule : SupervisorConfig.HIGH_SEVERITY_RULES.get()) {
+        for (String rule : ConfigCache.highSeverityRules) {
             highlightedMessage = matchRule(rule, parsedMessage, Severity.HIGH);
         }
 

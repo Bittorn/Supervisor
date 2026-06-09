@@ -3,6 +3,8 @@ package net.bittorn.supervisor;
 import java.util.List;
 
 import net.bittorn.supervisor.censor.CensorManager;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class SupervisorConfig {
@@ -61,6 +63,18 @@ public class SupervisorConfig {
     // endregion
 
     static final ModConfigSpec SPEC = BUILDER.build();
+
+    @SubscribeEvent
+    public static void onLoad(final ModConfigEvent.Loading configEvent) {
+        Supervisor.LOGGER.debug("Loaded config file {}", configEvent.getConfig().getFileName());
+        ConfigCache.updateCache();
+    }
+
+    @SubscribeEvent
+    public static void onFileChange(final ModConfigEvent.Reloading configEvent) {
+        Supervisor.LOGGER.debug("Config just got changed on the file system!");
+        ConfigCache.updateCache();
+    }
 
     private static boolean validateRule(final Object obj) {
         return obj instanceof String;
