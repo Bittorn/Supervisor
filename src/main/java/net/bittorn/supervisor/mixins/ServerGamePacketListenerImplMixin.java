@@ -39,7 +39,7 @@ public abstract class ServerGamePacketListenerImplMixin {
         }
 
         // Check if Censor is enabled
-        if (ConfigCache.enableCensor) {
+        if (!ConfigCache.enableCensor) {
             if (ConfigCache.debug) Supervisor.LOGGER.debug("Censor is disabled, returning");
             return;
         }

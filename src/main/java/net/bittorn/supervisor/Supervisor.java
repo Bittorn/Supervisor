@@ -19,6 +19,7 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 public class Supervisor {
     // Define mod id in a common place for everything to reference
     public static final String MODID = "supervisor";
+    public static final String MODVERSION = "0.0.2";
     // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
 

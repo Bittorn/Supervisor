@@ -67,6 +67,7 @@ public class SupervisorConfig {
     @SubscribeEvent
     public static void onLoad(final ModConfigEvent.Loading configEvent) {
         Supervisor.LOGGER.debug("Loaded config file {}", configEvent.getConfig().getFileName());
+
         ConfigCache.updateCache();
     }
 
