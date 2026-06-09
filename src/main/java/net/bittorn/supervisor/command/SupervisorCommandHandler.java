@@ -92,6 +92,7 @@ public class SupervisorCommandHandler {
         LiteralArgumentBuilder<CommandSourceStack> gma = Commands.literal("gma").executes(ctx -> setGamemode(ctx, GameType.ADVENTURE));
 
         // endregion
+
         dispatcher.register(supervisor);
 
         dispatcher.register(gmc.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
