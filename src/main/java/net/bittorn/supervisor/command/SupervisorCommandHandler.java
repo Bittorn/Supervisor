@@ -16,6 +16,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.GameProfileArgument;
+import net.minecraft.commands.arguments.MessageArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -25,7 +27,9 @@ import net.minecraft.server.players.UserBanList;
 import net.minecraft.server.players.UserBanListEntry;
 import net.minecraft.world.level.GameType;
 
+import javax.swing.text.html.parser.Entity;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.Date;
 
 public class SupervisorCommandHandler {
@@ -42,22 +46,26 @@ public class SupervisorCommandHandler {
             sendSuccess(ctx, Component.literal("--- Supervisor %s ---".formatted(Supervisor.MODVERSION)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
 //            sendSuccess(ctx, Component.literal("--- Prefixed Commands ---").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
             // Meta
-            sendClickable(ctx, "/supervisor help",                          "Lists Supervisor commands",                        ChatFormatting.GREEN);
-            sendClickable(ctx, "/supervisor reload",                        "Reloads Supervisor config",                        ChatFormatting.GREEN);
+            sendClickable(ctx, "/supervisor help",                              "Lists Supervisor commands",                        ChatFormatting.GREEN);
+            sendClickable(ctx, "/supervisor reload",                            "Reloads Supervisor config",                        ChatFormatting.GREEN);
 
             // Access
 //            TODO sendClickable(ctx, "/supervisor warn <player> [reason]",        "Warns player with optional reason",                ChatFormatting.DARK_RED);
-            sendClickable(ctx, "/supervisor kick <player> [reason]",        "Kicks player for optional reason",                ChatFormatting.DARK_RED);
-            sendClickable(ctx, "/supervisor ban <player> <length> <reason>","Bans player for given length and reason",          ChatFormatting.DARK_RED);
-            sendClickable(ctx, "/supervisor permaban <player> <reason>",    "Permanently bans player for given reason",         ChatFormatting.DARK_RED);
+            // TODO do not copy <> and [] when clicking
+            sendClickable(ctx, "/supervisor kick <player> [reason]",            "Kicks player for optional reason",                 ChatFormatting.DARK_RED);
+            sendClickable(ctx, "/supervisor ban <players> <length> <reason>",   "Bans players for given length and reason",         ChatFormatting.DARK_RED);
+            sendClickable(ctx, "/supervisor permaban <players> <reason>",       "Permanently bans players for given reason",        ChatFormatting.DARK_RED);
+            sendClickable(ctx, "/supervisor unban <players>",                   "(alias for /supervisor pardon)",                   ChatFormatting.DARK_RED);
+            sendClickable(ctx, "/supervisor pardon <players>",                  "Pardons players",                                  ChatFormatting.DARK_RED);
+
 
             sendSuccess(ctx, Component.literal(" "));
 
             // Gamemode
-            sendClickable(ctx, "/gmc",                                      "Sets self to creative mode",                       ChatFormatting.GOLD);
-            sendClickable(ctx, "/gms",                                      "Sets self to survival mode",                       ChatFormatting.GOLD);
-            sendClickable(ctx, "/gma",                                      "Sets self to adventure mode",                      ChatFormatting.GOLD);
-            sendClickable(ctx, "/gmsp",                                     "Sets self to spectator mode",                      ChatFormatting.GOLD);
+            sendClickable(ctx, "/gmc",                                          "Sets self to creative mode",                       ChatFormatting.GOLD);
+            sendClickable(ctx, "/gms",                                          "Sets self to survival mode",                       ChatFormatting.GOLD);
+            sendClickable(ctx, "/gma",                                          "Sets self to adventure mode",                      ChatFormatting.GOLD);
+            sendClickable(ctx, "/gmsp",                                         "Sets self to spectator mode",                      ChatFormatting.GOLD);
             return 1;
         }));
 
@@ -75,21 +83,36 @@ public class SupervisorCommandHandler {
 
         supervisor.then(Commands.literal("kick")
                 .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS).executes(ctx ->
-                kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), "")
-        ).then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx ->
-                kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), StringArgumentType.getString(ctx, "reason"))
+                kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), Component.empty())
+        ).then(Commands.argument("reason", MessageArgument.message()).executes(ctx ->
+                kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), MessageArgument.getMessage(ctx, "reason"))
         ))));
 
         supervisor.then(Commands.literal("ban")
-                .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS)
+                .then(Commands.argument("players", GameProfileArgument.gameProfile()).suggests(ONLINE_PLAYERS)
                         .then(Commands.argument("length", IntegerArgumentType.integer(1))
-                                .then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx ->
-                                    banPlayer(ctx, EntityArgument.getPlayer(ctx, "player").getGameProfile(), IntegerArgumentType.getInteger(ctx, "length"), StringArgumentType.getString(ctx, "reason")))))));
+                                .then(Commands.argument("reason", MessageArgument.message()).executes(ctx ->
+                                    banPlayer(ctx, GameProfileArgument.getGameProfiles(ctx, "players"), IntegerArgumentType.getInteger(ctx, "length"), MessageArgument.getMessage(ctx, "reason")))))));
 
         supervisor.then(Commands.literal("permaban")
-                .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS)
-                        .then(Commands.argument("reason", StringArgumentType.greedyString()).executes(ctx ->
-                            banPlayer(ctx, EntityArgument.getPlayer(ctx, "player").getGameProfile(), 0, StringArgumentType.getString(ctx, "reason"))))));
+                .then(Commands.argument("players", GameProfileArgument.gameProfile()).suggests(ONLINE_PLAYERS)
+                        .then(Commands.argument("reason", MessageArgument.message()).executes(ctx ->
+                            banPlayer(ctx, GameProfileArgument.getGameProfiles(ctx, "players"), 0, MessageArgument.getMessage(ctx, "reason"))))));
+
+        supervisor.then(Commands.literal("unban")
+                .then(Commands.argument("players", GameProfileArgument.gameProfile())
+                        .suggests(
+                                (ctx, p) -> SharedSuggestionProvider.suggest((ctx.getSource()).getServer().getPlayerList().getBans().getUserList(), p)
+                        ).executes(ctx ->
+                            unbanPlayer(ctx, GameProfileArgument.getGameProfiles(ctx, "players")))));
+
+        // Quick and dirty clone for /pardon
+        supervisor.then(Commands.literal("pardon")
+                .then(Commands.argument("players", GameProfileArgument.gameProfile())
+                        .suggests(
+                                (ctx, p) -> SharedSuggestionProvider.suggest((ctx.getSource()).getServer().getPlayerList().getBans().getUserList(), p)
+                        ).executes(ctx ->
+                                unbanPlayer(ctx, GameProfileArgument.getGameProfiles(ctx, "players")))));
 
         // endregion
 
@@ -104,7 +127,7 @@ public class SupervisorCommandHandler {
 
         dispatcher.register(supervisor);
 
-        dispatcher.register(gmc.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
+        dispatcher.register(gmc.requires(commandSourceStack -> commandSourceStack.hasPermission(4)));
         dispatcher.register(gms.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
         dispatcher.register(gmsp.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
         dispatcher.register(gma.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
@@ -122,41 +145,70 @@ public class SupervisorCommandHandler {
         return 1;
     }
 
-    private static int kickPlayer(CommandContext<CommandSourceStack> ctx, ServerPlayer player, String reason) /* throws CommandSyntaxException */ {
+    private static int kickPlayer(CommandContext<CommandSourceStack> ctx, ServerPlayer player, Component reason) /* throws CommandSyntaxException */ {
         Component cReason = Component.literal("You have been kicked from the server.").withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
         Component actualReason = Component.literal("""
                 You have been kicked from the server.
                
                 Reason:\s
                """
-        ).append(reason).withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
+        ).append(reason).withStyle(ChatFormatting.RED);
 
         // TODO check if player is online
 
-        player.connection.disconnect(reason.isEmpty() ? cReason : actualReason);
+        player.connection.disconnect(reason.getString().isEmpty() ? cReason : actualReason);
         sendSuccess(ctx, Component.literal("%s has been kicked".formatted(player.getName())).withStyle(ChatFormatting.DARK_GREEN));
         return 1;
     }
 
-    private static int banPlayer(CommandContext<CommandSourceStack> ctx, GameProfile gameProfile, int length, String reason) throws CommandSyntaxException {
+    private static int banPlayer(CommandContext<CommandSourceStack> ctx, final Collection<GameProfile> gameProfiles, int length, Component reason) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
-        UserBanList userbanlist = source.getServer().getPlayerList().getBans();
+        UserBanList userBanList = source.getServer().getPlayerList().getBans();
+        int count = 0;
 
         Date date = java.sql.Date.valueOf(LocalDate.now().plusDays(length));
 
         Date currentDate = java.sql.Date.valueOf(LocalDate.now());
 
-        if (userbanlist.isBanned(gameProfile)) {
+        for (GameProfile gameProfile : gameProfiles) {
+            if (!userBanList.isBanned(gameProfile)) {
+                UserBanListEntry userBanListEntry = new UserBanListEntry(gameProfile, currentDate, source.getTextName(), length == 0 ? null : date, reason.getString());
+                userBanList.add(userBanListEntry);
+                count++;
+                sendSuccess(ctx, Component.translatable("commands.ban.success", Component.literal(gameProfile.getName()), userBanListEntry.getReason()));
+                ServerPlayer serverplayer = source.getServer().getPlayerList().getPlayer(gameProfile.getId());
+                if (serverplayer != null) {
+                    serverplayer.connection.disconnect(Component.translatable("multiplayer.disconnect.banned"));
+                }
+            }
+        }
+
+        if (count == 0) {
             throw new SimpleCommandExceptionType(Component.translatable("commands.ban.failed")).create();
         } else {
-            UserBanListEntry userbanlistentry = new UserBanListEntry(gameProfile, currentDate, source.getTextName(), length == 0 ? null : date, reason);
-            userbanlist.add(userbanlistentry);
-            source.sendSuccess(() -> Component.translatable("commands.ban.success", Component.literal(gameProfile.getName()), userbanlistentry.getReason()), true);
-            ServerPlayer serverplayer = source.getServer().getPlayerList().getPlayer(gameProfile.getId());
-            if (serverplayer != null) {
-                serverplayer.connection.disconnect(Component.translatable("multiplayer.disconnect.banned"));
+            return count;
+        }
+    }
+
+    private static int unbanPlayer(CommandContext<CommandSourceStack> ctx, Collection<GameProfile> gameProfiles) throws CommandSyntaxException {
+        CommandSourceStack source = ctx.getSource();
+        UserBanList userBanList = source.getServer().getPlayerList().getBans();
+        int count = 0;
+
+        for (GameProfile gameProfile : gameProfiles) {
+            if (userBanList.isBanned(gameProfile)) {
+                Supervisor.LOGGER.debug("Unbanning {}", gameProfile.getName());
+                userBanList.remove(gameProfile);
+                count++;
+                sendSuccess(ctx, Component.translatable("commands.pardon.success", Component.literal(gameProfile.getName())));
+                Supervisor.LOGGER.debug("Success!");
             }
-            return 1;
+        }
+
+        if (count == 0) {
+            throw new SimpleCommandExceptionType(Component.translatable("commands.pardon.failed")).create();
+        } else {
+            return count;
         }
     }
 
