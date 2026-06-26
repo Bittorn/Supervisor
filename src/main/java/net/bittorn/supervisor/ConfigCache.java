@@ -20,6 +20,10 @@ public class ConfigCache {
     public static CensorManager.CensorAction highSeverityAction;
     public static List<? extends String> highSeverityRules;
 
+    // API
+    public static boolean enableApi;
+    public static int port;
+
     public static void updateCache() {
         debug = Services.PLATFORM.debug();
         enableWebhook = Services.PLATFORM.enableWebhook();

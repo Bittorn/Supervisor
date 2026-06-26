@@ -62,6 +62,17 @@ public class SupervisorConfig {
 
     // endregion
 
+    // region API
+
+    public static final ModConfigSpec.BooleanValue ENABLE_API = BUILDER
+            .comment(" Whether to enable web API")
+            .comment(" Default: true")
+            .define("enableApi", true);
+
+    public static final ModConfigSpec.IntValue PORT = BUILDER
+            .comment(" Port to expose for web API")
+            .defineInRange("port", 3000, 1024, 49151);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     @SubscribeEvent

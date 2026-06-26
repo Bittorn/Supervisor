@@ -65,4 +65,18 @@ public class PlatformHelper implements IPlatformHelper {
     }
 
     // endregion
+
+    // region API
+
+    @Override
+    public boolean enableApi() {
+        return SupervisorConfig.ENABLE_API.get();
+    }
+
+    @Override
+    public int port() {
+        return SupervisorConfig.PORT.get();
+    }
+
+    // endregion
 }

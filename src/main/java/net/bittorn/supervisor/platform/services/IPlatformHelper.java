@@ -31,4 +31,12 @@ public interface IPlatformHelper {
     List<? extends String> highSeverityRules();
 
     // endregion
+
+    // region API
+
+    boolean enableApi();
+
+    int port();
+
+    // endregion
 }

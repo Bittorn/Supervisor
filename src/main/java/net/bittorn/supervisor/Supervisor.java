@@ -1,8 +1,11 @@
 package net.bittorn.supervisor;
 
+import net.bittorn.supervisor.api.APIManager;
 import net.bittorn.supervisor.command.SupervisorCommandHandler;
+import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
@@ -20,6 +23,7 @@ public class Supervisor {
     // Define mod id in a common place for everything to reference
     public static final String MODID = "supervisor";
     public static final String MODVERSION = "0.0.2";
+    public static MinecraftServer SERVER;
     // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
 
@@ -44,6 +48,8 @@ public class Supervisor {
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
+        SERVER = event.getServer();
+
         if (ConfigCache.debug) {
             LOGGER.debug("Debug mode is enabled.");
         }
@@ -70,6 +76,18 @@ public class Supervisor {
             LOGGER.info("Censor is disabled");
         }
 
+        if (ConfigCache.enableApi) {
+            LOGGER.info("Web API is enabled");
+            APIManager.startServer();
+        } else {
+            LOGGER.info("Web API is disabled");
+        }
+
         LOGGER.info("Supervisor loaded successfully");
+    }
+
+    @SubscribeEvent
+    public static void onServerStopped(ServerStoppedEvent event) {
+        SERVER = null;
     }
 }
