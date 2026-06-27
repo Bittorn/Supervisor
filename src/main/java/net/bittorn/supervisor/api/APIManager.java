@@ -3,7 +3,7 @@ package net.bittorn.supervisor.api;
 import com.sun.net.httpserver.HttpServer;
 import net.bittorn.supervisor.ConfigCache;
 import net.bittorn.supervisor.Supervisor;
-import net.bittorn.supervisor.api.handlers.PlayerHandler;
+import net.bittorn.supervisor.api.handlers.OnlinePlayerHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -14,8 +14,9 @@ public class APIManager {
             var port = ConfigCache.port;
             HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
-            server.createContext("/api/online", new PlayerHandler());
+            server.createContext("/api/online", new OnlinePlayerHandler());
 
+            // TODO move to separate thread
             server.setExecutor(null);
             server.start();
 

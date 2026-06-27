@@ -3,7 +3,6 @@ package net.bittorn.supervisor.command;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -18,21 +17,18 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.MessageArgument;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.*;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.UserBanList;
 import net.minecraft.server.players.UserBanListEntry;
+import net.minecraft.stats.ServerStatsCounter;
+import net.minecraft.stats.Stats;
 import net.minecraft.world.level.GameType;
 
-import javax.swing.text.html.parser.Entity;
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.Date;
+import java.util.*;
 
-public class SupervisorCommandHandler {
+public class CommandHandler {
 
     // Only suggest online players
     private static final SuggestionProvider<CommandSourceStack> ONLINE_PLAYERS = (ctx, builder) ->
@@ -44,7 +40,6 @@ public class SupervisorCommandHandler {
         // supervisor help
         supervisor.then(Commands.literal("help").executes(ctx -> {
             sendSuccess(ctx, Component.literal("--- Supervisor %s ---".formatted(Supervisor.MODVERSION)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
-//            sendSuccess(ctx, Component.literal("--- Prefixed Commands ---").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
             // Meta
             sendClickable(ctx, "/supervisor help",                              "Lists Supervisor commands",                        ChatFormatting.GREEN);
             sendClickable(ctx, "/supervisor reload",                            "Reloads Supervisor config",                        ChatFormatting.GREEN);
@@ -66,21 +61,20 @@ public class SupervisorCommandHandler {
             sendClickable(ctx, "/gms",                                          "Sets self to survival mode",                       ChatFormatting.GOLD);
             sendClickable(ctx, "/gma",                                          "Sets self to adventure mode",                      ChatFormatting.GOLD);
             sendClickable(ctx, "/gmsp",                                         "Sets self to spectator mode",                      ChatFormatting.GOLD);
+
+            sendClickable(ctx, "/playtime [player]",                            "Gets playtime of player",                          ChatFormatting.AQUA);
             return 1;
         }));
 
-        // region Meta commands
-
+        // region Meta
         supervisor.then(Commands.literal("reload").executes(ctx -> {
             ConfigCache.updateCache();
             sendSuccess(ctx, Component.literal("Supervisor config reloaded!").withStyle(ChatFormatting.DARK_GREEN));
             return 1;
         }));
-
         // endregion
 
-        // region Access commands
-
+        // region Access
         supervisor.then(Commands.literal("kick")
                 .then(Commands.argument("player", EntityArgument.player()).suggests(ONLINE_PLAYERS).executes(ctx ->
                 kickPlayer(ctx, EntityArgument.getPlayer(ctx, "player"), Component.empty())
@@ -114,23 +108,38 @@ public class SupervisorCommandHandler {
                         ).executes(ctx ->
                                 unbanPlayer(ctx, GameProfileArgument.getGameProfiles(ctx, "players")))));
 
+        dispatcher.register(supervisor);
         // endregion
 
-        // region Gamemode commands
-
+        // region Gamemode
         LiteralArgumentBuilder<CommandSourceStack> gmc = Commands.literal("gmc").executes(ctx -> setGamemode(ctx, GameType.CREATIVE));
         LiteralArgumentBuilder<CommandSourceStack> gms = Commands.literal("gms").executes(ctx -> setGamemode(ctx, GameType.SURVIVAL));
         LiteralArgumentBuilder<CommandSourceStack> gmsp = Commands.literal("gmsp").executes(ctx -> setGamemode(ctx, GameType.SPECTATOR));
         LiteralArgumentBuilder<CommandSourceStack> gma = Commands.literal("gma").executes(ctx -> setGamemode(ctx, GameType.ADVENTURE));
 
-        // endregion
-
-        dispatcher.register(supervisor);
-
+        // TODO move requirements up to command definitions
         dispatcher.register(gmc.requires(commandSourceStack -> commandSourceStack.hasPermission(4)));
         dispatcher.register(gms.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
         dispatcher.register(gmsp.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
         dispatcher.register(gma.requires(commandSourceStack -> commandSourceStack.hasPermission(2)));
+        // endregion
+
+        // region Miscellaneous
+        LiteralArgumentBuilder<CommandSourceStack> playtime = Commands.literal("playtime")
+                .executes(ctx -> {
+                    if (!ctx.getSource().isPlayer()) {
+                        ctx.getSource().sendFailure(Component.literal("Please specify a player: /playtime <player>"));
+                        return 0;
+                    }
+                    return getPlaytime(ctx, Collections.singleton(Objects.requireNonNull(ctx.getSource().getPlayer()).getGameProfile()));
+                }
+                ).then(Commands.argument("player", GameProfileArgument.gameProfile()).suggests(ONLINE_PLAYERS)
+                                .executes(ctx ->
+                                        getPlaytime(ctx, GameProfileArgument.getGameProfiles(ctx, "player"))));
+
+        dispatcher.register(playtime);
+        // endregion
+
     }
 
     private static int setGamemode(CommandContext<CommandSourceStack> ctx, GameType gameType) {
@@ -141,8 +150,82 @@ public class SupervisorCommandHandler {
         }
         assert player != null;
         player.setGameMode(gameType);
-        sendSuccess(ctx, Component.literal("You are now in %s".formatted(gameType.getName())).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        sendSuccess(ctx, Component.literal("You are now in ").withStyle(ChatFormatting.GOLD).append(
+                Component.literal(gameType.getName()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+        ));
         return 1;
+    }
+
+    private static int getPlaytime(CommandContext<CommandSourceStack> ctx, final Collection<GameProfile> gameProfiles) {
+        GameProfile profile = gameProfiles.iterator().next();
+
+        // TODO get data from offline player
+        ServerPlayer player = Supervisor.SERVER.getPlayerList().getPlayer(profile.getId());
+
+        if (player == null || (player.hasPermissions(2) && !ctx.getSource().hasPermission(4))) {
+            ctx.getSource().sendFailure(Component.literal("Cannot get playtime of user " + profile.getName()).withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        ServerStatsCounter stats = Supervisor.SERVER.getPlayerList().getPlayerStats(player);
+
+        int ticks = stats.getValue(Stats.CUSTOM, Stats.PLAY_TIME);
+
+        MutableComponent begin;
+
+        if (player == ctx.getSource().getPlayer()) {
+            begin = Component.literal("You have played for ").withStyle(ChatFormatting.GOLD);
+        } else {
+            begin = Component.literal(profile.getName()).withStyle(ChatFormatting.AQUA)
+                    .append(Component.literal(" has played for ").withStyle(ChatFormatting.GOLD));
+        }
+
+        sendSuccess(ctx, begin.append(Component.literal(formatPlaytime(ticks)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+
+        return 1;
+    }
+
+    private static String formatPlaytime(int ticks) {
+        int totalSeconds = ticks / 20;
+
+        int days = totalSeconds / 86400;
+        int hours = (totalSeconds % 86400) / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+
+        List<String> components = new ArrayList<>(4);
+
+        if (days > 0) {
+            components.add(days + (days == 1 ? " day" : " days"));
+        }
+
+        if (hours > 0) {
+            components.add(hours + (hours == 1 ? " hour" : " hours"));
+        }
+
+        if (minutes > 0) {
+            components.add(minutes + (minutes == 1 ? " minute" : " minutes"));
+        }
+
+        if (seconds > 0 || components.isEmpty()) {
+            components.add(seconds + (seconds == 1 ? " second" : " seconds"));
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        for (int i = 0; i < components.size(); i++) {
+            result.append(components.get(i));
+
+            if (i < components.size() - 2) {
+                result.append(", ");
+            } else if (i == components.size() - 2) {
+                result.append(" and ");
+            }
+        }
+
+        result.append(".");
+
+        return result.toString();
     }
 
     private static int kickPlayer(CommandContext<CommandSourceStack> ctx, ServerPlayer player, Component reason) /* throws CommandSyntaxException */ {

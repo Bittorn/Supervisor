@@ -106,7 +106,7 @@ public class CensorManager {
     }
 
     private static boolean isSingleplayerOrHost(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = Supervisor.SERVER;
         assert server != null;
         if (!server.isPublished()) {
             if (ConfigCache.debug) Supervisor.LOGGER.debug("Game is singleplayer, return");
@@ -121,7 +121,7 @@ public class CensorManager {
     }
 
     private static void processAction(CensorAction censorAction, ServerPlayer player, Component messageToPlayer, ParsedMessage parsedMessage, CallbackInfo ci) {
-        MinecraftServer server = Objects.requireNonNull(player.getServer());
+        MinecraftServer server = Supervisor.SERVER;
 
         if (censorAction != CensorAction.NONE) {
             logMessage(player, parsedMessage);
@@ -135,7 +135,7 @@ public class CensorManager {
 
         switch (censorAction) {
             case KICK -> kickPlayer(messageToPlayer, player);
-            case BAN -> banPlayer(messageToPlayer, server, player);
+            case BAN -> banPlayer(messageToPlayer, player);
         }
     }
 
@@ -147,7 +147,8 @@ public class CensorManager {
         player.connection.disconnect(messageToPlayer);
     }
 
-    private static void banPlayer(Component messageToPlayer, MinecraftServer server, ServerPlayer player) {
+    private static void banPlayer(Component messageToPlayer, ServerPlayer player) {
+        MinecraftServer server = Supervisor.SERVER;
         UserBanList banList = server.getPlayerList().getBans();
         UserBanListEntry banListEntry = new UserBanListEntry(player.getGameProfile(), null, Supervisor.MODID, null, messageToPlayer.getString());
         banList.add(banListEntry);

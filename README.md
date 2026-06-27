@@ -10,6 +10,8 @@ license. For the latest license text, refer to the mapping file itself, or the r
 https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
 
 # Credits
-Massively inspired by (if not directly backporting) [Censorship](https://github.com/Ran-Mewo/Censorship)
+Massively inspired by (if not directly backporting) [Censorship](https://github.com/Ran-Mewo/Censorship), licensed under LGPL 3.0
+
+/playtime formatting taken from [Playtime Command](https://github.com/SpoonySimone/PlaytimeCommand), licensed under GPL 3.0
 
 Mod made with [NeoForged](https://neoforged.net/)

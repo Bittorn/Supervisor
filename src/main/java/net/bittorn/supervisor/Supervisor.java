@@ -1,7 +1,7 @@
 package net.bittorn.supervisor;
 
 import net.bittorn.supervisor.api.APIManager;
-import net.bittorn.supervisor.command.SupervisorCommandHandler;
+import net.bittorn.supervisor.command.CommandHandler;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
@@ -22,9 +22,9 @@ import net.neoforged.neoforge.event.server.ServerStartingEvent;
 public class Supervisor {
     // Define mod id in a common place for everything to reference
     public static final String MODID = "supervisor";
-    public static final String MODVERSION = "0.0.2";
+    public static final String MODVERSION = "0.0.3";
     public static MinecraftServer SERVER;
-    // Directly reference a slf4j logger
+    // Directly reference a SLF4J logger
     public static final Logger LOGGER = LogUtils.getLogger();
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -43,7 +43,7 @@ public class Supervisor {
     }
 
     public void registerCommands(RegisterCommandsEvent event) {
-        SupervisorCommandHandler.register(event.getDispatcher());
+        CommandHandler.register(event.getDispatcher());
     }
 
     @SubscribeEvent
@@ -87,7 +87,7 @@ public class Supervisor {
     }
 
     @SubscribeEvent
-    public static void onServerStopped(ServerStoppedEvent event) {
+    public void onServerStopped(ServerStoppedEvent event) {
         SERVER = null;
     }
 }

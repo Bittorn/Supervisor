@@ -38,5 +38,9 @@ public class ConfigCache {
         mediumSeverityRules = Services.PLATFORM.mediumSeverityRules();
         highSeverityAction = Services.PLATFORM.highSeverityAction();
         highSeverityRules = Services.PLATFORM.highSeverityRules();
+
+        // API
+        enableApi = Services.PLATFORM.enableApi();
+        port = Services.PLATFORM.port();
     }
 }

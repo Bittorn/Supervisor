@@ -10,12 +10,14 @@ import java.io.OutputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 
-public class PlayerHandler implements HttpHandler {
+public class OnlinePlayerHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException
     {
         OutputStream os = exchange.getResponseBody();
         String path = exchange.getRequestURI().getPath();
+
+        Supervisor.LOGGER.debug("API request [{}]: {}", exchange.getRemoteAddress().toString().substring(1), path);
 
         String prefix = "/api/online/";
 
