@@ -78,5 +78,8 @@ public class PlatformHelper implements IPlatformHelper {
         return SupervisorConfig.PORT.get();
     }
 
+    @Override
+    public int onlineBypassPermissionLevel() { return SupervisorConfig.ONLINE_BYPASS_PERMISSION_LEVEL.get();}
+
     // endregion
 }

@@ -38,5 +38,7 @@ public interface IPlatformHelper {
 
     int port();
 
+    int onlineBypassPermissionLevel();
+
     // endregion
 }

@@ -2,6 +2,7 @@ package net.bittorn.supervisor.api.handlers;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import net.bittorn.supervisor.ConfigCache;
 import net.bittorn.supervisor.Supervisor;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -32,7 +33,7 @@ public class OnlinePlayerHandler implements HttpHandler {
                 StandardCharsets.UTF_8
         );
 
-        if (player == null) {
+        if (player.isEmpty()) {
             exchange.sendResponseHeaders(404, -1);
             return;
         }
@@ -45,6 +46,14 @@ public class OnlinePlayerHandler implements HttpHandler {
 
     private boolean isPlayerOnline(String query) {
         ServerPlayer player = Supervisor.SERVER.getPlayerList().getPlayerByName(query);
-        return player != null;
+        if (player == null) {
+            return false;
+        }
+        if (player.server.getProfilePermissions(player.getGameProfile()) >= ConfigCache.onlineBypassPermissionLevel
+                && ConfigCache.onlineBypassPermissionLevel != 0) {
+            if (ConfigCache.debug) Supervisor.LOGGER.debug("Player has bypass permission, returning");
+            return false;
+        }
+        return true;
     }
 }

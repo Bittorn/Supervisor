@@ -23,6 +23,7 @@ public class ConfigCache {
     // API
     public static boolean enableApi;
     public static int port;
+    public static int onlineBypassPermissionLevel;
 
     public static void updateCache() {
         debug = Services.PLATFORM.debug();
@@ -42,5 +43,6 @@ public class ConfigCache {
         // API
         enableApi = Services.PLATFORM.enableApi();
         port = Services.PLATFORM.port();
+        onlineBypassPermissionLevel = Services.PLATFORM.onlineBypassPermissionLevel();
     }
 }

@@ -73,6 +73,10 @@ public class SupervisorConfig {
             .comment(" Port to expose for web API")
             .defineInRange("port", 3000, 1024, 49151);
 
+    public static final ModConfigSpec.IntValue ONLINE_BYPASS_PERMISSION_LEVEL = BUILDER
+            .comment(" Permission level to block querying player status via web API (set to 0 to disable bypassing)")
+            .defineInRange("onlineBypassPermissionLevel", 2, 0, Integer.MAX_VALUE);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     @SubscribeEvent
