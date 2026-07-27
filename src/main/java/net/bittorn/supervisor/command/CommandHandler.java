@@ -10,6 +10,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.bittorn.supervisor.ConfigCache;
 import net.bittorn.supervisor.Supervisor;
+import net.bittorn.supervisor.seen.SeenManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -63,6 +64,7 @@ public class CommandHandler {
             sendClickable(ctx, "/gmsp",                                         "Sets self to spectator mode",                      ChatFormatting.GOLD);
 
             sendClickable(ctx, "/playtime [player]",                            "Gets playtime of player",                          ChatFormatting.AQUA);
+            sendClickable(ctx, "/seen [player]",                                "Gets time player was last seen",                   ChatFormatting.AQUA);
             return 1;
         }));
 
@@ -137,7 +139,13 @@ public class CommandHandler {
                                 .executes(ctx ->
                                         getPlaytime(ctx, GameProfileArgument.getGameProfiles(ctx, "player"))));
 
+        LiteralArgumentBuilder<CommandSourceStack> seen = Commands.literal("seen")
+                .then(Commands.argument("player", GameProfileArgument.gameProfile()).suggests(ONLINE_PLAYERS)
+                        .executes(ctx ->
+                                getPlayerSeen(ctx, GameProfileArgument.getGameProfiles(ctx, "player"))));
+
         dispatcher.register(playtime);
+        dispatcher.register(seen);
         // endregion
 
     }
@@ -228,6 +236,30 @@ public class CommandHandler {
         return result.toString();
     }
 
+    private static int getPlayerSeen(CommandContext<CommandSourceStack> ctx, final Collection<GameProfile> gameProfiles) {
+        GameProfile player = gameProfiles.iterator().next();
+
+        // TODO make this work for non-ops
+        if ((Supervisor.SERVER.getPlayerList().isOp(player) && !ctx.getSource().hasPermission(4)) || !SeenManager.hasBeenSeen(player)) {
+            ctx.getSource().sendFailure(Component.literal("Cannot get last seen of user " + player.getName()).withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        Component component;
+
+        if (Supervisor.SERVER.getPlayerList().getPlayer(player.getId()) != null) {
+            component = Component.literal(player.getName()).withStyle(ChatFormatting.AQUA)
+                    .append(Component.literal(" is currently online").withStyle(ChatFormatting.GOLD));
+        } else {
+            component = Component.literal(player.getName()).withStyle(ChatFormatting.AQUA)
+                    .append(Component.literal(" was last seen on ").withStyle(ChatFormatting.GOLD)
+                            .append(Component.literal(SeenManager.getFormattedPlayerSeen(player)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        }
+
+        sendSuccess(ctx, component);
+        return 1;
+    }
+
     private static int kickPlayer(CommandContext<CommandSourceStack> ctx, ServerPlayer player, Component reason) /* throws CommandSyntaxException */ {
         Component cReason = Component.literal("You have been kicked from the server.").withStyle(ChatFormatting.RED, ChatFormatting.BOLD);
         Component actualReason = Component.literal("""
@@ -238,6 +270,7 @@ public class CommandHandler {
         ).append(reason).withStyle(ChatFormatting.RED);
 
         // TODO check if player is online
+        // do we need to? won't return ServerPlayer if player isn't already online
 
         player.connection.disconnect(reason.getString().isEmpty() ? cReason : actualReason);
         sendSuccess(ctx, Component.literal("%s has been kicked".formatted(player.getName())).withStyle(ChatFormatting.DARK_GREEN));

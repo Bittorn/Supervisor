@@ -2,9 +2,17 @@ package net.bittorn.supervisor;
 
 import net.bittorn.supervisor.api.APIManager;
 import net.bittorn.supervisor.command.CommandHandler;
+import net.bittorn.supervisor.seen.SeenManager;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.ServerScoreboard;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.ScoreHolder;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.slf4j.Logger;
 
@@ -17,12 +25,15 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 
+import java.text.NumberFormat;
+import java.time.Instant;
+
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(Supervisor.MODID)
 public class Supervisor {
     // Define mod id in a common place for everything to reference
     public static final String MODID = "supervisor";
-    public static final String MODVERSION = "0.0.3";
+    public static final String MODVERSION = "0.0.4";
     public static MinecraftServer SERVER;
     // Directly reference a SLF4J logger
     public static final Logger LOGGER = LogUtils.getLogger();
@@ -49,10 +60,6 @@ public class Supervisor {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         SERVER = event.getServer();
-
-        if (ConfigCache.debug) {
-            LOGGER.debug("Debug mode is enabled.");
-        }
 
         if (ConfigCache.enableWebhook) {
             if (ConfigCache.webhookURL.isBlank()) {
@@ -87,7 +94,13 @@ public class Supervisor {
     }
 
     @SubscribeEvent
+    public void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
+        SeenManager.setPlayerSeen(event.getEntity().getGameProfile());
+    }
+
+    @SubscribeEvent
     public void onServerStopped(ServerStoppedEvent event) {
         SERVER = null;
+        APIManager.stopServer();
     }
 }
