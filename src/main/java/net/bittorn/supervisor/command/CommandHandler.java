@@ -240,7 +240,7 @@ public class CommandHandler {
         GameProfile player = gameProfiles.iterator().next();
 
         // TODO make this work for non-ops
-        if ((Supervisor.SERVER.getPlayerList().isOp(player) && !ctx.getSource().hasPermission(4)) || !SeenManager.hasBeenSeen(player)) {
+        if (Supervisor.SERVER.getPlayerList().isOp(player) && !ctx.getSource().hasPermission(4)) {
             ctx.getSource().sendFailure(Component.literal("Cannot get last seen of user " + player.getName()).withStyle(ChatFormatting.RED));
             return 0;
         }
@@ -254,6 +254,11 @@ public class CommandHandler {
             component = Component.literal(player.getName()).withStyle(ChatFormatting.AQUA)
                     .append(Component.literal(" was last seen on ").withStyle(ChatFormatting.GOLD)
                             .append(Component.literal(SeenManager.getFormattedPlayerSeen(player)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        }
+
+        if (!SeenManager.hasBeenSeen(player)) {
+            ctx.getSource().sendFailure(Component.literal("Cannot get last seen of user " + player.getName()).withStyle(ChatFormatting.RED));
+            return 0;
         }
 
         sendSuccess(ctx, component);
